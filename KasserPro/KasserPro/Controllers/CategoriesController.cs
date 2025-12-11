@@ -76,19 +76,29 @@ namespace KasserPro.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<Category>> CreateCategory(Category category)
         {
-            // التحقق من عدم وجود تصنيف بنفس الاسم
-            var exists = await _context.Categories
-                .AnyAsync(c => c.Name.ToLower() == category.Name.ToLower());
-
-            if (exists)
+            try
             {
-                return BadRequest(new { message = "يوجد تصنيف بنفس الاسم بالفعل" });
+                // التحقق من عدم وجود تصنيف بنفس الاسم
+                var exists = await _context.Categories
+                    .AnyAsync(c => c.Name.ToLower() == category.Name.ToLower());
+
+                if (exists)
+                {
+                    return BadRequest(new { message = "يوجد تصنيف بنفس الاسم بالفعل" });
+                }
+
+                // تعيين Id = 0 للسماح للـ database بتوليده
+                category.Id = 0;
+                
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
             }
-
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "حدث خطأ أثناء إنشاء التصنيف", error = ex.Message });
+            }
         }
 
         // PUT: api/categories/5
