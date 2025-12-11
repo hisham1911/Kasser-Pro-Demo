@@ -9,13 +9,14 @@ var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (!string.IsNullOrEmpty(connectionString))
 {
-    // Production - PostgreSQL on Render
-    // تحويل رابط Render إلى صيغة Npgsql
-    if (connectionString.StartsWith("postgres://"))
+    // Production - PostgreSQL on Railway/Render
+    // تحويل رابط postgresql:// أو postgres:// إلى صيغة Npgsql
+    if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
     {
         var uri = new Uri(connectionString);
         var userInfo = uri.UserInfo.Split(':');
-        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        var database = uri.AbsolutePath.TrimStart('/');
+        connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={database};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
     }
     
     builder.Services.AddDbContext<KasserDbContext>(options =>
