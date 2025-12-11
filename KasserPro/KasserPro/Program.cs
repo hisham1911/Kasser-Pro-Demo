@@ -4,8 +4,29 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddDbContext<KasserDbContext>(options =>
-    options.UseSqlite("Data Source=database.db"));
+// استخدام PostgreSQL في Production و SQLite محلياً
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+if (!string.IsNullOrEmpty(connectionString))
+{
+    // Production - PostgreSQL on Render
+    // تحويل رابط Render إلى صيغة Npgsql
+    if (connectionString.StartsWith("postgres://"))
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    }
+    
+    builder.Services.AddDbContext<KasserDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
+else
+{
+    // Development - SQLite
+    builder.Services.AddDbContext<KasserDbContext>(options =>
+        options.UseSqlite("Data Source=database.db"));
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
