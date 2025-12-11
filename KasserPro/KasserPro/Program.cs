@@ -78,23 +78,25 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // إنشاء الداتابيز أوتوماتيك لو مش موجودة
-using (var scope = app.Services.CreateScope())
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<KasserDbContext>();
-    db.Database.Migrate();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<KasserDbContext>();
+        Console.WriteLine("Applying database migrations...");
+        db.Database.Migrate();
+        Console.WriteLine("Database migrations applied successfully!");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error applying migrations: {ex.Message}");
+    // نكمل حتى لو فشل الـ migration - ممكن الجداول موجودة
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    // Enable Swagger in production for testing
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Enable Swagger in all environments
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // app.UseHttpsRedirection(); // معطل عشان نستخدم HTTP في التطوير
 app.UseCors("AllowAll");
