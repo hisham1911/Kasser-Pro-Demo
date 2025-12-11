@@ -83,15 +83,28 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<KasserDbContext>();
-        Console.WriteLine("Applying database migrations...");
-        db.Database.Migrate();
-        Console.WriteLine("Database migrations applied successfully!");
+        
+        // للـ PostgreSQL نستخدم EnsureCreated لإنشاء الجداول بشكل صحيح
+        var isPostgres = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PGHOST")) ||
+                         !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL"));
+        
+        if (isPostgres)
+        {
+            Console.WriteLine("Using PostgreSQL - Creating database schema...");
+            db.Database.EnsureCreated();
+            Console.WriteLine("PostgreSQL schema created successfully!");
+        }
+        else
+        {
+            Console.WriteLine("Using SQLite - Applying migrations...");
+            db.Database.Migrate();
+            Console.WriteLine("SQLite migrations applied successfully!");
+        }
     }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Error applying migrations: {ex.Message}");
-    // نكمل حتى لو فشل الـ migration - ممكن الجداول موجودة
+    Console.WriteLine($"Error setting up database: {ex.Message}");
 }
 
 // Enable Swagger in all environments
