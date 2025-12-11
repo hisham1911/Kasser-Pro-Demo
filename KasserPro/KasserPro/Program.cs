@@ -96,10 +96,17 @@ catch (Exception ex)
 
 // Enable Swagger in all environments
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "KasserPro API v1");
+    c.RoutePrefix = "swagger";
+});
 
 // app.UseHttpsRedirection(); // معطل عشان نستخدم HTTP في التطوير
 app.UseCors("AllowAll");
 app.MapControllers();
+
+// إضافة endpoint بسيط للتأكد أن الـ API يعمل
+app.MapGet("/", () => Results.Ok(new { message = "KasserPro API is running!", swagger = "/swagger" }));
 
 app.Run();
