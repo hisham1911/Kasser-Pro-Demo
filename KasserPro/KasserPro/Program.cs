@@ -5,26 +5,57 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // استخدام PostgreSQL في Production و SQLite محلياً
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var pgHost = Environment.GetEnvironmentVariable("PGHOST");
+var pgDatabase = Environment.GetEnvironmentVariable("PGDATABASE");
+var pgUser = Environment.GetEnvironmentVariable("PGUSER");
+var pgPassword = Environment.GetEnvironmentVariable("PGPASSWORD");
+var pgPort = Environment.GetEnvironmentVariable("PGPORT") ?? "5432";
+
+string? connectionString = null;
+
+// الطريقة 1: استخدام المتغيرات المنفصلة من Railway
+if (!string.IsNullOrEmpty(pgHost) && !string.IsNullOrEmpty(pgDatabase))
+{
+    connectionString = $"Host={pgHost};Port={pgPort};Database={pgDatabase};Username={pgUser};Password={pgPassword};SSL Mode=Require;Trust Server Certificate=true";
+    Console.WriteLine($"Using PostgreSQL with separate env vars: Host={pgHost}, Database={pgDatabase}");
+}
+// الطريقة 2: تحويل DATABASE_URL
+else if (!string.IsNullOrEmpty(databaseUrl))
+{
+    try
+    {
+        if (databaseUrl.StartsWith("postgresql://") || databaseUrl.StartsWith("postgres://"))
+        {
+            var uri = new Uri(databaseUrl);
+            var userInfo = uri.UserInfo.Split(':');
+            var database = uri.AbsolutePath.TrimStart('/');
+            connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={database};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+            Console.WriteLine($"Converted DATABASE_URL to: Host={uri.Host}, Database={database}");
+        }
+        else
+        {
+            // ربما تكون الصيغة صحيحة مباشرة
+            connectionString = databaseUrl;
+            Console.WriteLine("Using DATABASE_URL directly");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error parsing DATABASE_URL: {ex.Message}");
+    }
+}
 
 if (!string.IsNullOrEmpty(connectionString))
 {
-    // Production - PostgreSQL on Railway/Render
-    // تحويل رابط postgresql:// أو postgres:// إلى صيغة Npgsql
-    if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
-    {
-        var uri = new Uri(connectionString);
-        var userInfo = uri.UserInfo.Split(':');
-        var database = uri.AbsolutePath.TrimStart('/');
-        connectionString = $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={database};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-    }
-    
+    Console.WriteLine("Configuring PostgreSQL...");
     builder.Services.AddDbContext<KasserDbContext>(options =>
         options.UseNpgsql(connectionString));
 }
 else
 {
     // Development - SQLite
+    Console.WriteLine("Using SQLite for development...");
     builder.Services.AddDbContext<KasserDbContext>(options =>
         options.UseSqlite("Data Source=database.db"));
 }
