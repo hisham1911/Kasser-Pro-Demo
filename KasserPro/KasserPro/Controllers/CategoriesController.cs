@@ -87,17 +87,27 @@ namespace KasserPro.Api.Controllers
                     return BadRequest(new { message = "يوجد تصنيف بنفس الاسم بالفعل" });
                 }
 
-                // تعيين Id = 0 للسماح للـ database بتوليده
-                category.Id = 0;
+                // إنشاء category جديد بدون Id
+                var newCategory = new Category
+                {
+                    Name = category.Name,
+                    Color = category.Color,
+                    Icon = category.Icon
+                };
                 
-                _context.Categories.Add(category);
+                _context.Categories.Add(newCategory);
                 await _context.SaveChangesAsync();
 
-                return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
+                return CreatedAtAction(nameof(GetCategory), new { id = newCategory.Id }, newCategory);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "حدث خطأ أثناء إنشاء التصنيف", error = ex.Message });
+                var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+                return StatusCode(500, new { 
+                    message = "حدث خطأ أثناء إنشاء التصنيف", 
+                    error = ex.Message,
+                    innerError = innerMessage
+                });
             }
         }
 
